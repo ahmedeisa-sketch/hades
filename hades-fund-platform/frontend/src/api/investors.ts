@@ -80,6 +80,7 @@ export interface Investor {
   sourceOfFundsStatus: ReviewStatus;
   riskRating?: RiskRating | null;
   relationshipManagerId?: string | null;
+  portalUserId?: string | null;
   relationshipManager?: { id: string; fullName: string } | null;
   documents?: InvestorDocument[];
   subscriptions?: Subscription[];
@@ -167,5 +168,23 @@ export async function transitionInvestorStage(
   note?: string,
 ): Promise<Investor> {
   const { data } = await apiClient.patch<Investor>(`/investors/${id}/stage`, { toStage, note });
+  return data;
+}
+
+export interface PortalAccountResult {
+  userId: string;
+  email: string;
+  temporaryPassword: string;
+  mustChangePassword: boolean;
+}
+
+export async function provisionPortalAccount(
+  id: string,
+  input?: { email?: string; password?: string },
+): Promise<PortalAccountResult> {
+  const { data } = await apiClient.post<PortalAccountResult>(
+    `/investors/${id}/portal-account`,
+    input ?? {},
+  );
   return data;
 }

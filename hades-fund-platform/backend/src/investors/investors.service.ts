@@ -1,14 +1,18 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InvestorStatus, Prisma, ReviewStatus } from '@prisma/client';
+import { InvestorStatus, Prisma, ReviewStatus, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateInvestorDto } from './dto/create-investor.dto';
 import { UpdateInvestorDto } from './dto/update-investor.dto';
 import { UpdateComplianceDto } from './dto/update-compliance.dto';
+import { ProvisionPortalAccountDto } from './dto/provision-portal-account.dto';
 
 // Module 3 — Investor Onboarding Workflow (PRD order is the source of truth)
 const WORKFLOW_ORDER: InvestorStatus[] = [
@@ -224,5 +228,67 @@ export class InvestorsService {
       where: { id },
       data: { deletedAt: new Date(), updatedBy },
     });
+  }
+
+  /**
+   * Creates a read-only portal login (a User with role INVESTOR) and links it
+   * to the investor via portalUserId — the account the Investor Portal
+   * (Module 9) scopes every request to. Returns the temporary password once,
+   * for the operator to hand off; it is only ever stored hashed.
+   *
+   * Guards: the investor must exist, must not already have a portal account,
+   * and their email must not already be used by another user account.
+   */
+  async provisionPortalAccount(
+    id: string,
+    dto: ProvisionPortalAccountDto,
+    actorUserId: string,
+  ) {
+    const investor = await this.findOne(id);
+
+    if (investor.portalUserId) {
+      throw new ConflictException('This investor already has a portal account');
+    }
+
+    const loginEmail = (dto.email ?? investor.email).trim().toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({ where: { email: loginEmail } });
+    if (existingUser) {
+      throw new ConflictException(`A user account already exists for ${loginEmail}`);
+    }
+
+    // A URL-safe temporary password unless the operator supplied one.
+    const temporaryPassword = dto.password ?? randomBytes(9).toString('base64url');
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+
+    // Create the login and link it in one transaction so we never end up with
+    // an orphaned user account if the link step fails.
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: loginEmail,
+          passwordHash,
+          fullName: investor.fullName,
+          role: UserRole.INVESTOR,
+        },
+      });
+      await tx.investor.update({
+        where: { id },
+        data: { portalUserId: created.id, updatedBy: actorUserId },
+      });
+      return created;
+    });
+
+    await this.notifications.enqueue({
+      userId: user.id,
+      template: 'PORTAL_ACCESS_GRANTED',
+      payload: { investorId: id, clientId: investor.clientId },
+    });
+
+    return {
+      userId: user.id,
+      email: loginEmail,
+      temporaryPassword,
+      mustChangePassword: true,
+    };
   }
 }

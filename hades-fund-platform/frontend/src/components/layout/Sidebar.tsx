@@ -13,6 +13,7 @@ interface NavItem {
 const STAFF_NAV: NavItem[] = [
   { to: '/', label: 'Dashboard' },
   { to: '/investors', label: 'Investors' },
+  { to: '/funds', label: 'Funds & NAV' },
   { to: '/compliance', label: 'Compliance' },
   { to: '/distributions', label: 'Distributions' },
   { to: '/redemptions', label: 'Redemptions' },

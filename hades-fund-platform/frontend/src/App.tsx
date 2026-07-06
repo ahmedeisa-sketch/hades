@@ -16,6 +16,7 @@ import { RedemptionDetail } from './pages/redemptions/RedemptionDetail';
 import { Reports } from './pages/reports/Reports';
 import { Notifications } from './pages/notifications/Notifications';
 import { MyPortfolio } from './pages/portal/MyPortfolio';
+import { FundsManagement } from './pages/funds/FundsManagement';
 
 /**
  * Investors land on their read-only portal; the staff dashboard calls
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="/" element={<HomeRoute />} />
                 <Route path="/investors" element={<InvestorsList />} />
                 <Route path="/investors/new" element={<InvestorNew />} />
+                <Route path="/funds" element={<FundsManagement />} />
                 <Route path="/investors/:id" element={<InvestorDetail />} />
                 <Route path="/compliance" element={<ComplianceCenter />} />
                 <Route path="/distributions" element={<DistributionsList />} />
