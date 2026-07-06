@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 export function Login() {
@@ -17,8 +18,21 @@ export function Login() {
     try {
       await signIn(email, password);
       navigate('/');
-    } catch {
-      setError('Incorrect email or password.');
+    } catch (err) {
+      // Distinguish genuinely-wrong credentials (a 401 from the API) from the
+      // API being unreachable / blocked by CORS (no response), so setup
+      // problems don't masquerade as bad credentials.
+      if (isAxiosError(err) && err.response) {
+        setError(
+          err.response.status === 401
+            ? 'Incorrect email or password.'
+            : `Login failed (server responded ${err.response.status}). Check the API logs.`,
+        );
+      } else {
+        setError(
+          'Could not reach the API. Is the backend running on the expected URL, and is CORS_ORIGIN set to this app’s origin?',
+        );
+      }
     } finally {
       setLoading(false);
     }
