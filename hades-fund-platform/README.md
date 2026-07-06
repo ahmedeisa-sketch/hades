@@ -97,7 +97,12 @@ for the phase breakdown.
   investor can only ever see their own profile, subscriptions, distributions received,
   redemptions, documents (metadata only — no storage keys), and a portfolio statement. The
   frontend routes `INVESTOR`-role users to a dedicated **My Portfolio** view and hides all staff
-  navigation.
+  navigation. Staff **provision an investor's portal login** from the investor detail page
+  (`POST /investors/:id/portal-account`), which creates a linked `INVESTOR` user with a one-time
+  temporary password.
+- **Fund & NAV management UI** — a staff **Funds & NAV** screen to create funds and enter NAV
+  snapshots (the prices that drive subscription/redemption unit maths), so the Phase 2/3 flows
+  are usable end-to-end without hitting the API directly.
 - **Notifications (Module 11)** — a **pluggable delivery abstraction** (`NotificationSender`)
   mirroring the storage design: a log-only sender ships for development, an email sender
   (SES/SendGrid/SMTP) is selected via `NOTIFICATION_PROVIDER`. Every notification is persisted
@@ -283,8 +288,9 @@ hades-fund-platform/
 │       ├── context/AuthContext.tsx
 │       ├── components/            # Sidebar, AppShell, KpiCard, StatusBadge, investor panels
 │       ├── lib/                   # shared helpers (currency/date/units formatting)
-│       └── pages/                 # Login, Dashboard, Investors, Compliance, Distributions,
-│                                  #   Redemptions, Reports, Notifications, Portal (My Portfolio)
+│       └── pages/                 # Login, Dashboard, Investors, Funds & NAV, Compliance,
+│                                  #   Distributions, Redemptions, Reports, Notifications,
+│                                  #   Portal (My Portfolio)
 └── docker-compose.yml
 ```
 

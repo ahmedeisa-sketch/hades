@@ -6,6 +6,8 @@ import {
   updateInvestor,
   updateInvestorCompliance,
   transitionInvestorStage,
+  provisionPortalAccount,
+  PortalAccountResult,
   WORKFLOW_ORDER,
   InvestorStatus,
   ReviewStatus,
@@ -24,6 +26,8 @@ export function InvestorDetail() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [portalCredentials, setPortalCredentials] = useState<PortalAccountResult | null>(null);
+  const [provisioning, setProvisioning] = useState(false);
 
   const { data: investor, isLoading } = useQuery({
     queryKey: ['investor', id],
@@ -51,6 +55,21 @@ export function InvestorDetail() {
       await refresh();
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? 'Could not update the workflow stage.');
+    }
+  }
+
+  async function handleProvisionPortal() {
+    if (!id) return;
+    setProvisioning(true);
+    setActionError(null);
+    try {
+      const result = await provisionPortalAccount(id);
+      setPortalCredentials(result);
+      await refresh();
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? 'Could not provision a portal account.');
+    } finally {
+      setProvisioning(false);
     }
   }
 
@@ -222,6 +241,42 @@ export function InvestorDetail() {
           </div>
         </section>
       </div>
+
+      <section className="bg-white/60 border border-ink/5 rounded-sm p-5 mb-6">
+        <h2 className="text-sm uppercase tracking-widest text-slate mb-4">Portal account</h2>
+        {investor.portalUserId ? (
+          <div className="text-sm text-ink flex items-center gap-2">
+            <StatusBadge status="ACTIVE" />
+            <span>This investor has a portal login and can sign in to view their portfolio.</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate">
+              No portal login yet. Provision one so the investor can sign in (read-only).
+            </span>
+            <button
+              onClick={handleProvisionPortal}
+              disabled={provisioning}
+              className="bg-ink text-paper text-xs px-3 py-2 hover:bg-ink-soft transition-colors disabled:opacity-50"
+            >
+              {provisioning ? 'Provisioning…' : 'Provision portal account'}
+            </button>
+          </div>
+        )}
+
+        {portalCredentials && (
+          <div className="mt-4 border border-gold/40 bg-gold/5 rounded-sm p-4 text-sm">
+            <div className="font-medium text-ink mb-2">
+              Portal account created — share these credentials securely. This is the only time the
+              password is shown.
+            </div>
+            <div className="font-mono text-xs space-y-1">
+              <div>Email: {portalCredentials.email}</div>
+              <div>Temporary password: {portalCredentials.temporaryPassword}</div>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <DocumentsPanel investorId={investor.id} />

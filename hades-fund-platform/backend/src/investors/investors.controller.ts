@@ -17,6 +17,7 @@ import { UpdateInvestorDto } from './dto/update-investor.dto';
 import { UpdateComplianceDto } from './dto/update-compliance.dto';
 import { QueryInvestorsDto } from './dto/query-investors.dto';
 import { TransitionStageDto } from './dto/transition-stage.dto';
+import { ProvisionPortalAccountDto } from './dto/provision-portal-account.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -106,6 +107,18 @@ export class InvestorsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.investorsService.transitionStage(id, dto.toStage, user.userId, dto.note);
+  }
+
+  // Provision a read-only investor portal login and link it to this investor.
+  // Returns the temporary password once for hand-off.
+  @Post(':id/portal-account')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS)
+  provisionPortalAccount(
+    @Param('id') id: string,
+    @Body() dto: ProvisionPortalAccountDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.investorsService.provisionPortalAccount(id, dto, user.userId);
   }
 
   @Delete(':id')

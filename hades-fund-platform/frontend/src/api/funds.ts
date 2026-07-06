@@ -21,8 +21,22 @@ export interface NavSnapshot {
   createdAt: string;
 }
 
+export interface CreateFundInput {
+  name: string;
+  baseCurrency?: string;
+  managementFeePct?: number;
+  performanceFeePct?: number;
+  lockupMonths?: number;
+  noticeDays?: number;
+}
+
 export async function fetchFunds(): Promise<Fund[]> {
   const { data } = await apiClient.get<Fund[]>('/funds');
+  return data;
+}
+
+export async function createFund(input: CreateFundInput): Promise<Fund> {
+  const { data } = await apiClient.post<Fund>('/funds', input);
   return data;
 }
 
