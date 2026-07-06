@@ -3,8 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InvestorStatus, Prisma } from '@prisma/client';
+import { InvestorStatus, Prisma, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateInvestorDto } from './dto/create-investor.dto';
 import { UpdateInvestorDto } from './dto/update-investor.dto';
 import { UpdateComplianceDto } from './dto/update-compliance.dto';
@@ -22,7 +23,10 @@ const WORKFLOW_ORDER: InvestorStatus[] = [
 
 @Injectable()
 export class InvestorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private async generateClientId(): Promise<string> {
     const count = await this.prisma.investor.count();
@@ -141,10 +145,20 @@ export class InvestorsService {
 
   async updateCompliance(id: string, dto: UpdateComplianceDto, updatedBy: string) {
     await this.findOne(id);
-    return this.prisma.investor.update({
+    const updated = await this.prisma.investor.update({
       where: { id },
       data: { ...dto, updatedBy },
     });
+
+    // Notify the investor when their KYC is approved (Module 11).
+    if (dto.kycStatus === ReviewStatus.APPROVED) {
+      await this.notifications.notifyInvestor(id, 'KYC_APPROVED', {
+        investorId: id,
+        clientId: updated.clientId,
+      });
+    }
+
+    return updated;
   }
 
   /**

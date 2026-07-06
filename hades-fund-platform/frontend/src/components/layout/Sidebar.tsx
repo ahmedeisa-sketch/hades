@@ -1,17 +1,30 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const NAV_ITEMS = [
+interface NavItem {
+  to: string;
+  label: string;
+  disabled?: boolean;
+}
+
+// Staff (all internal roles) see the operational nav; investors get their own
+// read-only portal nav. Kept as two lists rather than per-item role checks so
+// the two experiences stay clearly separated.
+const STAFF_NAV: NavItem[] = [
   { to: '/', label: 'Dashboard' },
   { to: '/investors', label: 'Investors' },
   { to: '/compliance', label: 'Compliance' },
   { to: '/distributions', label: 'Distributions' },
   { to: '/redemptions', label: 'Redemptions' },
-  { to: '/reports', label: 'Reports', disabled: true },
+  { to: '/reports', label: 'Reports' },
+  { to: '/notifications', label: 'Notifications' },
 ];
+
+const INVESTOR_NAV: NavItem[] = [{ to: '/portal', label: 'My Portfolio' }];
 
 export function Sidebar() {
   const { user, signOut } = useAuth();
+  const navItems = user?.role === 'INVESTOR' ? INVESTOR_NAV : STAFF_NAV;
 
   return (
     <aside className="w-64 shrink-0 bg-ink text-paper flex flex-col justify-between min-h-screen">
@@ -24,7 +37,7 @@ export function Sidebar() {
         </div>
 
         <nav className="mt-4 px-3">
-          {NAV_ITEMS.map((item) =>
+          {navItems.map((item) =>
             item.disabled ? (
               <div
                 key={item.to}

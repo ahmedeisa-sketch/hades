@@ -8,6 +8,7 @@ import { DistributionStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FundsService } from '../funds/funds.service';
 import { HoldingsService } from '../holdings/holdings.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateDistributionDto } from './dto/create-distribution.dto';
 
 interface AllowedTransition {
@@ -42,6 +43,7 @@ export class DistributionsService {
     private readonly prisma: PrismaService,
     private readonly fundsService: FundsService,
     private readonly holdingsService: HoldingsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateDistributionDto, createdBy: string) {
@@ -179,6 +181,19 @@ export class DistributionsService {
 
     await this.prisma.distribution.update({ where: { id }, data });
     await this.recordHistory(id, distribution.status, toStatus, user.userId, opts.note);
+
+    // On payout, notify every allocated investor (Module 11). Notifications
+    // are best-effort and never block the transition.
+    if (toStatus === DistributionStatus.PAID) {
+      for (const allocation of distribution.allocations) {
+        await this.notifications.notifyInvestor(allocation.investorId, 'DISTRIBUTION_PAID', {
+          distributionId: id,
+          period: distribution.distributionPeriod,
+          amount: allocation.amount.toString(),
+        });
+      }
+    }
+
     return this.findOne(id);
   }
 

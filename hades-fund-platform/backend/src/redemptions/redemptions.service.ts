@@ -8,6 +8,7 @@ import { Prisma, RedemptionStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FundsService } from '../funds/funds.service';
 import { HoldingsService } from '../holdings/holdings.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRedemptionDto } from './dto/create-redemption.dto';
 
 interface AllowedTransition {
@@ -60,6 +61,7 @@ export class RedemptionsService {
     private readonly prisma: PrismaService,
     private readonly fundsService: FundsService,
     private readonly holdingsService: HoldingsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -136,6 +138,10 @@ export class RedemptionsService {
       createdBy,
       'Redemption requested',
     );
+    await this.notifications.notifyInvestor(investorId, 'REDEMPTION_REQUESTED', {
+      redemptionId: redemption.id,
+      requestAmount: dto.requestAmount,
+    });
     return this.findOne(redemption.id);
   }
 
@@ -211,6 +217,14 @@ export class RedemptionsService {
 
     await this.prisma.redemption.update({ where: { id }, data });
     await this.recordHistory(id, redemption.status, toStatus, user.userId, opts.note);
+
+    if (toStatus === RedemptionStatus.PAID) {
+      await this.notifications.notifyInvestor(redemption.investorId, 'REDEMPTION_PAID', {
+        redemptionId: id,
+        paymentReference: opts.paymentReference ?? null,
+      });
+    }
+
     return this.findOne(id);
   }
 

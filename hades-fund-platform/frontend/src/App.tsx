@@ -1,6 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { AppShell } from './components/layout/AppShell';
 import { Login } from './pages/Login';
@@ -13,6 +13,18 @@ import { DistributionsList } from './pages/distributions/DistributionsList';
 import { DistributionDetail } from './pages/distributions/DistributionDetail';
 import { RedemptionsList } from './pages/redemptions/RedemptionsList';
 import { RedemptionDetail } from './pages/redemptions/RedemptionDetail';
+import { Reports } from './pages/reports/Reports';
+import { Notifications } from './pages/notifications/Notifications';
+import { MyPortfolio } from './pages/portal/MyPortfolio';
+
+/**
+ * Investors land on their read-only portal; the staff dashboard calls
+ * staff-only endpoints, so routing an investor there would just 403.
+ */
+function HomeRoute() {
+  const { user } = useAuth();
+  return user?.role === 'INVESTOR' ? <Navigate to="/portal" replace /> : <Dashboard />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -28,7 +40,7 @@ export default function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<HomeRoute />} />
                 <Route path="/investors" element={<InvestorsList />} />
                 <Route path="/investors/new" element={<InvestorNew />} />
                 <Route path="/investors/:id" element={<InvestorDetail />} />
@@ -37,6 +49,9 @@ export default function App() {
                 <Route path="/distributions/:id" element={<DistributionDetail />} />
                 <Route path="/redemptions" element={<RedemptionsList />} />
                 <Route path="/redemptions/:id" element={<RedemptionDetail />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/portal" element={<MyPortfolio />} />
               </Route>
             </Route>
           </Routes>

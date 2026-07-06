@@ -18,6 +18,9 @@ import { ComplianceModule } from './compliance/compliance.module';
 import { HoldingsModule } from './holdings/holdings.module';
 import { DistributionsModule } from './distributions/distributions.module';
 import { RedemptionsModule } from './redemptions/redemptions.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PortalModule } from './portal/portal.module';
+import { ReportingModule } from './reporting/reporting.module';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 @Module({
@@ -40,7 +43,10 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
     HoldingsModule,
     DistributionsModule,
     RedemptionsModule,
-    // Phase 4: NotificationsModule, ReportingModule, InvestorPortalModule
+    // Phase 4: Investor-facing & reporting
+    NotificationsModule, // @Global — injectable by the workflow modules above
+    PortalModule,
+    ReportingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

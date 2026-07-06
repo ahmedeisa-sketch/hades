@@ -12,6 +12,9 @@ const SEAL_CLASS_BY_STATUS: Record<string, string> = {
   REJECTED: 'seal-rejected text-wine',
   ESCALATED: 'seal-rejected text-wine',
   INACTIVE: 'seal-rejected text-wine',
+  // Notification delivery statuses
+  SENT: 'seal-approved text-forest',
+  FAILED: 'seal-rejected text-wine',
 };
 
 export function StatusBadge({ status }: { status: string }) {

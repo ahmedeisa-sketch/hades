@@ -34,6 +34,7 @@ services:
       CORS_ORIGIN: http://localhost:5173
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_DIR: /app/storage
+      NOTIFICATION_PROVIDER: log
     volumes:
       - hades_document_storage:/app/storage
     ports:

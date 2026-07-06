@@ -4,11 +4,11 @@ A web-based fund management platform replacing Excel-based operations: investors
 fund units, KYC/compliance, distributions, redemptions, documents, reporting, and dashboard
 analytics.
 
-This repository contains **Phase 1 (Foundation)**, **Phase 2 (Compliance & Documents)**, and
-**Phase 3 (Money Movement)** — a working, buildable application with real authentication, RBAC,
-audit logging, the full database schema, and implemented modules for Investor Registry,
-Dashboard, Documents, Subscriptions/NAV, Compliance Center, Distributions, and Redemptions. See
-[Roadmap](#roadmap) below for what's next.
+This repository implements **all four roadmap phases** — a working, buildable application with
+real authentication, RBAC, audit logging, the full database schema, and implemented modules for
+Investor Registry, Dashboard, Documents, Subscriptions/NAV, Compliance Center, Distributions,
+Redemptions, an investor-facing Portal, Notifications, and Reporting. See [Roadmap](#roadmap)
+for the phase breakdown.
 
 ## Tech stack
 
@@ -90,6 +90,26 @@ Dashboard, Documents, Subscriptions/NAV, Compliance Center, Distributions, and R
 - Every distribution and redemption transition is written to **workflow history**, and all
   mutating requests are captured by the global audit interceptor.
 
+## What's implemented (Phase 4 — Investor-facing & Reporting)
+
+- **Investor Portal (Module 9)** — a strictly **read-only, self-scoped** API for investor users.
+  Every endpoint resolves the caller's own investor record via `Investor.portalUserId`, so an
+  investor can only ever see their own profile, subscriptions, distributions received,
+  redemptions, documents (metadata only — no storage keys), and a portfolio statement. The
+  frontend routes `INVESTOR`-role users to a dedicated **My Portfolio** view and hides all staff
+  navigation.
+- **Notifications (Module 11)** — a **pluggable delivery abstraction** (`NotificationSender`)
+  mirroring the storage design: a log-only sender ships for development, an email sender
+  (SES/SendGrid/SMTP) is selected via `NOTIFICATION_PROVIDER`. Every notification is persisted
+  (PENDING → SENT/FAILED) and delivery is **best-effort** — a failed send never rolls back the
+  business action that triggered it. Wired to real workflow events: **KYC approved**,
+  **redemption requested**, **redemption paid**, and **distribution paid** (one per allocated
+  investor).
+- **Reporting (Module 12)** — dependency-free **CSV exports** for investors, subscriptions,
+  redemptions, distributions, and per-distribution allocations, streamed with the correct
+  content-type and RBAC-gated. The frontend Reports page downloads them through the authenticated
+  client. PDF/Excel are a documented follow-up (add a formatter over the same queries).
+
 ## Enhancements since the initial Phase 1 drop
 
 A follow-up security and completeness review found several gaps between what Phase 1 claimed
@@ -168,10 +188,10 @@ Distributions (Module 7) with a pro-rata calculation engine and a role-gated app
 Redemptions (Module 8) with automatic eligibility/settlement-date calculation from the fund's
 lock-up and notice rules and a multi-stage review workflow with lock-up enforcement.
 
-**Phase 4 — Investor-facing & reporting.**
-Investor Portal (Module 9, read-only), Notifications (Module 11, email via a provider like SES/
-SendGrid triggered off the audit log / workflow history), Reporting (Module 12) with PDF/Excel/
-CSV export.
+**Phase 4 — Investor-facing & reporting (done).**
+Investor Portal (Module 9, read-only, self-scoped), Notifications (Module 11, pluggable
+sender — log provider for dev, email-ready — triggered off workflow events), Reporting
+(Module 12) with CSV export (PDF/Excel are a documented follow-up).
 
 Each phase is scoped to be independently deployable — the schema for all of them already exists,
 so later phases are additive (new services/controllers), not migrations that touch what's already
@@ -251,6 +271,9 @@ hades-fund-platform/
 │       ├── holdings/             # Phase 3 — net fund-unit holdings engine
 │       ├── distributions/        # Phase 3 — pro-rata distributions + approval workflow
 │       ├── redemptions/          # Phase 3 — redemptions + eligibility/settlement workflow
+│       ├── notifications/        # Phase 4 — pluggable notification sender + event triggers
+│       ├── portal/               # Phase 4 — read-only, self-scoped investor portal
+│       ├── reporting/            # Phase 4 — CSV exports
 │       ├── health/               # liveness/readiness probe
 │       ├── common/                # RBAC guard/decorator, audit interceptor, storage abstraction
 │       └── prisma/                # PrismaService (DB client)
@@ -260,7 +283,8 @@ hades-fund-platform/
 │       ├── context/AuthContext.tsx
 │       ├── components/            # Sidebar, AppShell, KpiCard, StatusBadge, investor panels
 │       ├── lib/                   # shared helpers (currency/date/units formatting)
-│       └── pages/                 # Login, Dashboard, Investors, Compliance, Distributions, Redemptions
+│       └── pages/                 # Login, Dashboard, Investors, Compliance, Distributions,
+│                                  #   Redemptions, Reports, Notifications, Portal (My Portfolio)
 └── docker-compose.yml
 ```
 
