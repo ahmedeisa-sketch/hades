@@ -9,6 +9,10 @@ import { InvestorsList } from './pages/investors/InvestorsList';
 import { InvestorDetail } from './pages/investors/InvestorDetail';
 import { InvestorNew } from './pages/investors/InvestorNew';
 import { ComplianceCenter } from './pages/compliance/ComplianceCenter';
+import { DistributionsList } from './pages/distributions/DistributionsList';
+import { DistributionDetail } from './pages/distributions/DistributionDetail';
+import { RedemptionsList } from './pages/redemptions/RedemptionsList';
+import { RedemptionDetail } from './pages/redemptions/RedemptionDetail';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -29,6 +33,10 @@ export default function App() {
                 <Route path="/investors/new" element={<InvestorNew />} />
                 <Route path="/investors/:id" element={<InvestorDetail />} />
                 <Route path="/compliance" element={<ComplianceCenter />} />
+                <Route path="/distributions" element={<DistributionsList />} />
+                <Route path="/distributions/:id" element={<DistributionDetail />} />
+                <Route path="/redemptions" element={<RedemptionsList />} />
+                <Route path="/redemptions/:id" element={<RedemptionDetail />} />
               </Route>
             </Route>
           </Routes>

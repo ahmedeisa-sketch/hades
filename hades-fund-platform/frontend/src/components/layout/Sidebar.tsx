@@ -5,8 +5,8 @@ const NAV_ITEMS = [
   { to: '/', label: 'Dashboard' },
   { to: '/investors', label: 'Investors' },
   { to: '/compliance', label: 'Compliance' },
-  { to: '/distributions', label: 'Distributions', disabled: true },
-  { to: '/redemptions', label: 'Redemptions', disabled: true },
+  { to: '/distributions', label: 'Distributions' },
+  { to: '/redemptions', label: 'Redemptions' },
   { to: '/reports', label: 'Reports', disabled: true },
 ];
 

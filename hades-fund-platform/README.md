@@ -4,10 +4,11 @@ A web-based fund management platform replacing Excel-based operations: investors
 fund units, KYC/compliance, distributions, redemptions, documents, reporting, and dashboard
 analytics.
 
-This repository contains **Phase 1 (Foundation)** and **Phase 2 (Compliance & Documents)** — a
-working, buildable application with real authentication, RBAC, audit logging, the full database
-schema, and implemented modules for Investor Registry, Dashboard, Documents, Subscriptions/NAV,
-and a Compliance Center. See [Roadmap](#roadmap) below for what's next.
+This repository contains **Phase 1 (Foundation)**, **Phase 2 (Compliance & Documents)**, and
+**Phase 3 (Money Movement)** — a working, buildable application with real authentication, RBAC,
+audit logging, the full database schema, and implemented modules for Investor Registry,
+Dashboard, Documents, Subscriptions/NAV, Compliance Center, Distributions, and Redemptions. See
+[Roadmap](#roadmap) below for what's next.
 
 ## Tech stack
 
@@ -64,6 +65,30 @@ and a Compliance Center. See [Roadmap](#roadmap) below for what's next.
   queue (investors with pending/escalated KYC, AML, or source-of-funds), investors **missing
   required documents** (identity + KYC + AML + source-of-funds), and **document expiry alerts**
   (expired, and expiring within 30 days).
+
+## What's implemented (Phase 3 — Money Movement)
+
+- **Holdings engine** — a shared service computes each investor's **net units** in a fund
+  (`sum(subscription units) − sum(PAID redemption units)`) using `Prisma.Decimal`. Only settled
+  (PAID) redemptions reduce holdings, so in-flight requests never double-count units. This is the
+  basis for both distributions and redemption limits.
+- **Distributions (Module 7)** — a **pro-rata allocation engine**: a distribution's total amount
+  is split across unit holders in proportion to units held,
+  `share_i = amount × (units_i / totalUnits)`. Shares are computed at full precision, rounded to
+  the cent, and the rounding residual is applied to the largest allocation so the parts sum
+  exactly to the total. A **server-enforced approval workflow**
+  (`DRAFT → REVIEWED → APPROVED → PROCESSING → PAID`, with `REVIEWED → DRAFT` for corrections)
+  gates each step by role — e.g. only Portfolio Manager / Super Admin may approve, only Finance /
+  Super Admin may mark paid. Allocations can be recalculated while in DRAFT.
+- **Redemptions (Module 8)** — a request auto-calculates its **eligibility date**
+  (investor's entry date + fund `lockupMonths`) and **final settlement date**
+  (request date + fund `noticeDays`), derives units from the latest NAV, and is capped at the
+  investor's held units. A **multi-stage review workflow**
+  (`REQUESTED → COMPLIANCE_REVIEW → OPERATIONS_REVIEW → APPROVED → SETTLEMENT_PROCESSING → PAID`,
+  with rejection available at each review stage) is role-gated per transition, and **the lock-up
+  is enforced** — a redemption cannot be approved before its eligibility date.
+- Every distribution and redemption transition is written to **workflow history**, and all
+  mutating requests are captured by the global audit interceptor.
 
 ## Enhancements since the initial Phase 1 drop
 
@@ -138,10 +163,10 @@ Subscriptions module (Module 6) with automatic fund-unit calculation against `Na
 > Note: the storage abstraction ships with a working local-disk provider; the S3 provider is a
 > documented stub (`src/common/storage/s3-storage.service.ts`) to be completed with the AWS SDK.
 
-**Phase 3 — Money movement.**
-Distributions (Module 7) including the approval workflow and a real waterfall/pro-rata
-calculation engine, Redemptions (Module 8) including automatic eligibility/settlement date
-calculation from the fund's lock-up and notice rules.
+**Phase 3 — Money movement (done).**
+Distributions (Module 7) with a pro-rata calculation engine and a role-gated approval workflow,
+Redemptions (Module 8) with automatic eligibility/settlement-date calculation from the fund's
+lock-up and notice rules and a multi-stage review workflow with lock-up enforcement.
 
 **Phase 4 — Investor-facing & reporting.**
 Investor Portal (Module 9, read-only), Notifications (Module 11, email via a provider like SES/
@@ -223,6 +248,9 @@ hades-fund-platform/
 │       ├── funds/                # Phase 2 — funds + NAV snapshots
 │       ├── subscriptions/        # Phase 2 — subscriptions + auto fund-unit calc
 │       ├── compliance/           # Phase 2 — compliance review queue + doc alerts
+│       ├── holdings/             # Phase 3 — net fund-unit holdings engine
+│       ├── distributions/        # Phase 3 — pro-rata distributions + approval workflow
+│       ├── redemptions/          # Phase 3 — redemptions + eligibility/settlement workflow
 │       ├── health/               # liveness/readiness probe
 │       ├── common/                # RBAC guard/decorator, audit interceptor, storage abstraction
 │       └── prisma/                # PrismaService (DB client)
@@ -231,7 +259,8 @@ hades-fund-platform/
 │       ├── api/                   # typed API client functions
 │       ├── context/AuthContext.tsx
 │       ├── components/            # Sidebar, AppShell, KpiCard, StatusBadge, investor panels
-│       └── pages/                 # Login, Dashboard, Investors, Compliance
+│       ├── lib/                   # shared helpers (currency/date/units formatting)
+│       └── pages/                 # Login, Dashboard, Investors, Compliance, Distributions, Redemptions
 └── docker-compose.yml
 ```
 

@@ -15,6 +15,9 @@ import { DocumentsModule } from './documents/documents.module';
 import { FundsModule } from './funds/funds.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { ComplianceModule } from './compliance/compliance.module';
+import { HoldingsModule } from './holdings/holdings.module';
+import { DistributionsModule } from './distributions/distributions.module';
+import { RedemptionsModule } from './redemptions/redemptions.module';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 @Module({
@@ -33,7 +36,10 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
     FundsModule,
     SubscriptionsModule,
     ComplianceModule,
-    // Phase 3: DistributionsModule, RedemptionsModule
+    // Phase 3: Money movement
+    HoldingsModule,
+    DistributionsModule,
+    RedemptionsModule,
     // Phase 4: NotificationsModule, ReportingModule, InvestorPortalModule
   ],
   providers: [
