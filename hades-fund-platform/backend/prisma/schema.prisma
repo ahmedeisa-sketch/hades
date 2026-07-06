@@ -1,0 +1,485 @@
+// ============================================================
+// Hades Fund Management Platform — Database Schema
+// PostgreSQL via Prisma
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  OPERATIONS
+  COMPLIANCE_OFFICER
+  RELATIONSHIP_MANAGER
+  PORTFOLIO_MANAGER
+  FINANCE
+  INVESTOR
+}
+
+enum InvestorType {
+  RETAIL
+  PROFESSIONAL
+  INSTITUTION
+}
+
+enum InvestorStatus {
+  DRAFT
+  DOCUMENTS_UPLOADED
+  KYC_REVIEW
+  COMPLIANCE_REVIEW
+  APPROVED
+  FUNDED
+  ACTIVE
+  INACTIVE
+  REDEEMED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+enum RiskRating {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DocumentCategory {
+  IDENTITY
+  COMPLIANCE
+  INVESTOR
+}
+
+enum DocumentType {
+  PASSPORT
+  EMIRATES_ID
+  KYC_FORM
+  AML_FORM
+  SOURCE_OF_FUNDS
+  SUBSCRIPTION_FORM
+  TRANSFER_RECEIPT
+  BANK_CONFIRMATION
+  OTHER
+}
+
+enum DistributionStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+  PROCESSING
+  PAID
+}
+
+enum RedemptionStatus {
+  REQUESTED
+  COMPLIANCE_REVIEW
+  OPERATIONS_REVIEW
+  APPROVED
+  SETTLEMENT_PROCESSING
+  PAID
+  REJECTED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ------------------------------------------------------------
+// ACCESS CONTROL
+// ------------------------------------------------------------
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String
+  fullName          String
+  role              UserRole
+  mfaEnabled        Boolean   @default(false)
+  mfaSecret         String?
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  refreshTokenHash  String?
+
+  // If role == INVESTOR, links to the Investor record they can view
+  investor          Investor? @relation("InvestorUser")
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime? // soft delete
+
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  approvedDistributions Distribution[] @relation("DistributionApprover")
+  reviewedRedemptions   Redemption[]   @relation("RedemptionReviewer")
+  relationshipFor       Investor[]     @relation("RelationshipManager")
+
+  @@index([role])
+  @@map("users")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "investor.approve", "redemption.review"
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  role         UserRole
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  permissionId String
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+}
+
+// ------------------------------------------------------------
+// FUND (multi-fund ready even though PRD implies a single fund)
+// ------------------------------------------------------------
+
+model Fund {
+  id                String   @id @default(uuid())
+  name              String
+  baseCurrency      String   @default("AED")
+  managementFeePct  Decimal? @db.Decimal(6, 3) // e.g. 2.000
+  performanceFeePct Decimal? @db.Decimal(6, 3) // e.g. 20.000
+  lockupMonths      Int      @default(0)
+  noticeDays        Int      @default(30)
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptions     Subscription[]
+  distributions     Distribution[]
+  redemptions       Redemption[]
+  navHistory        NavSnapshot[]
+
+  @@map("funds")
+}
+
+// Manual NAV entry point — replace with a calculation engine in a later phase
+model NavSnapshot {
+  id        String   @id @default(uuid())
+  fund      Fund     @relation(fields: [fundId], references: [id])
+  fundId    String
+  asOfDate  DateTime
+  navPerUnit Decimal @db.Decimal(18, 6)
+  totalAum   Decimal @db.Decimal(18, 2)
+  enteredBy  String
+
+  createdAt DateTime @default(now())
+
+  @@unique([fundId, asOfDate])
+  @@map("nav_snapshots")
+}
+
+// ------------------------------------------------------------
+// INVESTOR
+// ------------------------------------------------------------
+
+model Investor {
+  id                 String         @id @default(uuid())
+  clientId           String         @unique // human-readable ID, e.g. HAD-00123
+
+  // General information
+  fullName           String
+  mobile             String
+  email              String         @unique
+  dateOfBirth        DateTime?
+  nationality         String?
+  country             String?
+  address             String?
+
+  // Banking
+  bankAccountNumber   String?
+  bankName            String?
+  iban                String?
+  swift               String?
+  virtualIban         String?
+
+  // Classification
+  investorType        InvestorType   @default(RETAIL)
+
+  // Relationship
+  relationshipManager   User?        @relation("RelationshipManager", fields: [relationshipManagerId], references: [id])
+  relationshipManagerId String?
+
+  // Compliance
+  kycStatus           ReviewStatus   @default(PENDING)
+  sourceOfFundsStatus ReviewStatus   @default(PENDING)
+  amlStatus           ReviewStatus   @default(PENDING)
+  riskRating          RiskRating?
+
+  // Workflow
+  status              InvestorStatus @default(DRAFT)
+
+  // Portal login (nullable until an investor user account is provisioned)
+  portalUser          User?          @relation("InvestorUser", fields: [portalUserId], references: [id])
+  portalUserId         String?        @unique
+
+  // Audit fields
+  createdBy           String?
+  updatedBy           String?
+  createdAt            DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  deletedAt              DateTime? // soft delete
+
+  documents            InvestorDocument[]
+  subscriptions         Subscription[]
+  distributions          DistributionAllocation[]
+  redemptions             Redemption[]
+  workflowHistory          WorkflowHistory[]
+
+  @@index([status])
+  @@index([kycStatus])
+  @@map("investors")
+}
+
+// ------------------------------------------------------------
+// DOCUMENTS
+// ------------------------------------------------------------
+
+model InvestorDocument {
+  id           String            @id @default(uuid())
+  investor     Investor          @relation(fields: [investorId], references: [id])
+  investorId   String
+
+  category     DocumentCategory
+  type         DocumentType
+  fileName     String
+  storageKey   String            // path/key in blob storage (S3 / Azure Blob)
+  version      Int               @default(1)
+  expiryDate   DateTime?
+
+  uploadedBy   String
+  uploadedAt   DateTime          @default(now())
+  deletedAt    DateTime?
+
+  @@index([investorId])
+  @@index([type])
+  @@map("investor_documents")
+}
+
+// ------------------------------------------------------------
+// SUBSCRIPTIONS
+// ------------------------------------------------------------
+
+model Subscription {
+  id                 String   @id @default(uuid())
+  investor           Investor @relation(fields: [investorId], references: [id])
+  investorId         String
+  fund               Fund     @relation(fields: [fundId], references: [id])
+  fundId             String
+
+  subscriptionAmount Decimal  @db.Decimal(18, 2)
+  allocationAmount   Decimal  @db.Decimal(18, 2)
+  fundUnits          Decimal  @db.Decimal(18, 6)
+  navPerUnitAtEntry  Decimal  @db.Decimal(18, 6)
+
+  transferDate       DateTime?
+  transferReference  String?
+  effectiveDate      DateTime?
+
+  createdBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  @@index([investorId])
+  @@index([fundId])
+  @@map("subscriptions")
+}
+
+// ------------------------------------------------------------
+// DISTRIBUTIONS
+// ------------------------------------------------------------
+
+model Distribution {
+  id                  String              @id @default(uuid())
+  fund                Fund                @relation(fields: [fundId], references: [id])
+  fundId              String
+
+  distributionPeriod  String              // e.g. "2026-Q2"
+  distributionDate    DateTime
+  distributionPct     Decimal             @db.Decimal(6, 3)
+  distributionAmount  Decimal             @db.Decimal(18, 2)
+
+  status              DistributionStatus  @default(DRAFT)
+
+  approvedBy          User?               @relation("DistributionApprover", fields: [approvedById], references: [id])
+  approvedById         String?
+  paymentReference     String?
+  paymentDate           DateTime?
+
+  createdAt              DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  allocations              DistributionAllocation[]
+  workflowHistory          WorkflowHistory[]
+
+  @@index([fundId])
+  @@index([status])
+  @@map("distributions")
+}
+
+// Per-investor share of a distribution run
+model DistributionAllocation {
+  id              String       @id @default(uuid())
+  distribution    Distribution @relation(fields: [distributionId], references: [id])
+  distributionId  String
+  investor        Investor     @relation(fields: [investorId], references: [id])
+  investorId      String
+
+  amount          Decimal      @db.Decimal(18, 2)
+  unitsHeldAtRun  Decimal      @db.Decimal(18, 6)
+
+  createdAt       DateTime     @default(now())
+
+  @@unique([distributionId, investorId])
+  @@map("distribution_allocations")
+}
+
+// ------------------------------------------------------------
+// REDEMPTIONS
+// ------------------------------------------------------------
+
+model Redemption {
+  id                   String            @id @default(uuid())
+  investor             Investor          @relation(fields: [investorId], references: [id])
+  investorId           String
+  fund                 Fund              @relation(fields: [fundId], references: [id])
+  fundId               String
+
+  requestDate          DateTime          @default(now())
+  requestAmount        Decimal           @db.Decimal(18, 2)
+  unitsRedeemed         Decimal           @db.Decimal(18, 6)
+
+  eligibilityDate         DateTime?         // auto-calculated from fund.lockupMonths
+  finalSettlementDate       DateTime?         // auto-calculated from fund.noticeDays
+
+  status                     RedemptionStatus  @default(REQUESTED)
+  reviewedBy                 User?             @relation("RedemptionReviewer", fields: [reviewedById], references: [id])
+  reviewedById                 String?
+
+  paymentReference               String?
+  paymentDate                    DateTime?
+
+  createdAt                        DateTime          @default(now())
+  updatedAt                          DateTime          @updatedAt
+
+  workflowHistory                    WorkflowHistory[]
+
+  @@index([investorId])
+  @@index([fundId])
+  @@index([status])
+  @@map("redemptions")
+}
+
+// ------------------------------------------------------------
+// WORKFLOW HISTORY (generic stage-tracking for onboarding / distributions / redemptions)
+// ------------------------------------------------------------
+
+model WorkflowHistory {
+  id             String    @id @default(uuid())
+
+  investor       Investor?     @relation(fields: [investorId], references: [id])
+  investorId     String?
+  distribution   Distribution? @relation(fields: [distributionId], references: [id])
+  distributionId String?
+  redemption     Redemption?   @relation(fields: [redemptionId], references: [id])
+  redemptionId   String?
+
+  entityType     String    // "INVESTOR" | "DISTRIBUTION" | "REDEMPTION"
+  fromStage      String?
+  toStage        String
+  changedBy      String
+  note           String?
+
+  createdAt      DateTime  @default(now())
+
+  @@index([entityType])
+  @@map("workflow_history")
+}
+
+// ------------------------------------------------------------
+// AUDIT LOG
+// ------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+
+  action     String   // "CREATE" | "UPDATE" | "DELETE" | "APPROVE" | "LOGIN"
+  entityType String   // e.g. "Investor"
+  entityId   String?
+
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ------------------------------------------------------------
+// NOTIFICATIONS
+// ------------------------------------------------------------
+
+model Notification {
+  id        String              @id @default(uuid())
+  user      User?               @relation(fields: [userId], references: [id])
+  userId    String?
+
+  channel   NotificationChannel @default(EMAIL)
+  template  String              // e.g. "KYC_APPROVED", "REDEMPTION_SUBMITTED"
+  payload   Json?
+  status    NotificationStatus  @default(PENDING)
+  sentAt    DateTime?
+
+  createdAt DateTime            @default(now())
+
+  @@index([status])
+  @@map("notifications")
+}
+
+// ------------------------------------------------------------
+// SYSTEM SETTINGS
+// ------------------------------------------------------------
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}

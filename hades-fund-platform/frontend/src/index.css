@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  ::selection {
+    @apply bg-gold/30;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+  /* Tabular figures everywhere money or counts are shown */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Signature element: a thin gold rule under KPI figures, evoking a ledger
+     underline rather than a generic card shadow. */
+  .kpi-figure {
+    @apply font-mono tabular text-3xl text-ink border-b-2 border-gold/60 pb-1 inline-block;
+  }
+
+  /* Status "seal" — a small filled dot + label, standing in for a wax seal
+     instead of a generic rounded pill badge. */
+  .seal {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase;
+  }
+  .seal::before {
+    content: '';
+    @apply w-1.5 h-1.5 rounded-full;
+  }
+  .seal-pending::before {
+    @apply bg-gold;
+  }
+  .seal-approved::before {
+    @apply bg-forest;
+  }
+  .seal-rejected::before {
+    @apply bg-wine;
+  }
+  .seal-active::before {
+    @apply bg-forest;
+  }
+}
