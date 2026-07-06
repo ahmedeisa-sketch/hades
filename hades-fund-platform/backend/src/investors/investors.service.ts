@@ -74,8 +74,10 @@ export class InvestorsService {
     status?: InvestorStatus;
     relationshipManagerId?: string;
   }) {
-    const page = params.page ?? 1;
-    const pageSize = params.pageSize ?? 20;
+    // Belt-and-suspenders clamp even though QueryInvestorsDto already
+    // validates these — keeps the service safe if ever called directly.
+    const page = Math.max(1, params.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 20));
 
     const where: Prisma.InvestorWhereInput = {
       deletedAt: null,
@@ -184,6 +186,22 @@ export class InvestorsService {
     });
 
     return updated;
+  }
+
+  /**
+   * Minimal picklist for RM assignment dropdowns. Only exposes users whose
+   * role can actually be a relationship manager, and only id/fullName.
+   */
+  async listRelationshipManagers() {
+    return this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        isActive: true,
+        role: { in: ['RELATIONSHIP_MANAGER', 'SUPER_ADMIN', 'OPERATIONS'] },
+      },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: 'asc' },
+    });
   }
 
   async softDelete(id: string, updatedBy: string) {

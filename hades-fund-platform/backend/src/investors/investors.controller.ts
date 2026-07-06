@@ -10,11 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { InvestorStatus, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { InvestorsService } from './investors.service';
 import { CreateInvestorDto } from './dto/create-investor.dto';
 import { UpdateInvestorDto } from './dto/update-investor.dto';
 import { UpdateComplianceDto } from './dto/update-compliance.dto';
+import { QueryInvestorsDto } from './dto/query-investors.dto';
+import { TransitionStageDto } from './dto/transition-stage.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -42,20 +44,20 @@ export class InvestorsController {
     UserRole.PORTFOLIO_MANAGER,
     UserRole.FINANCE,
   )
-  findAll(
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-    @Query('search') search?: string,
-    @Query('status') status?: InvestorStatus,
-    @Query('relationshipManagerId') relationshipManagerId?: string,
-  ) {
-    return this.investorsService.findAll({
-      page: page ? Number(page) : undefined,
-      pageSize: pageSize ? Number(pageSize) : undefined,
-      search,
-      status,
-      relationshipManagerId,
-    });
+  findAll(@Query() query: QueryInvestorsDto) {
+    return this.investorsService.findAll(query);
+  }
+
+  /**
+   * Lightweight relationship-manager picklist for the "Assign RM" dropdown
+   * on investor create/edit forms. Deliberately open to every role that can
+   * create/update an investor (not just SUPER_ADMIN, unlike /users) and
+   * returns only id/fullName — no email, role, or other account details.
+   */
+  @Get('relationship-managers')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.RELATIONSHIP_MANAGER)
+  listRelationshipManagers() {
+    return this.investorsService.listRelationshipManagers();
   }
 
   @Get(':id')
@@ -100,10 +102,10 @@ export class InvestorsController {
   )
   transitionStage(
     @Param('id') id: string,
-    @Body() body: { toStage: InvestorStatus; note?: string },
+    @Body() dto: TransitionStageDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.investorsService.transitionStage(id, body.toStage, user.userId, body.note);
+    return this.investorsService.transitionStage(id, dto.toStage, user.userId, dto.note);
   }
 
   @Delete(':id')

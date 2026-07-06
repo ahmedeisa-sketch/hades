@@ -8,8 +8,21 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
+
+  // A wildcard origin ("*") combined with credentials:true is rejected by
+  // browsers outright (and is a bad idea even if it weren't). If
+  // CORS_ORIGIN isn't set we fail closed to no cross-origin access rather
+  // than silently falling back to an open policy.
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean);
+  if (!corsOrigins || corsOrigins.length === 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      'CORS_ORIGIN is not set — cross-origin requests will be rejected. ' +
+        'Set CORS_ORIGIN to a comma-separated allowlist (e.g. http://localhost:5173) for the frontend to reach this API.',
+    );
+  }
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? '*',
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : false,
     credentials: true,
   });
 

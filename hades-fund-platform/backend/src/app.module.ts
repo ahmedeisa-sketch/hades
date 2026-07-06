@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { InvestorsModule } from './investors/investors.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { HealthModule } from './health/health.module';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 @Module({
@@ -20,6 +21,7 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
     UsersModule,
     InvestorsModule,
     DashboardModule,
+    HealthModule,
     // Phase 2: DocumentsModule, ComplianceModule, SubscriptionsModule
     // Phase 3: DistributionsModule, RedemptionsModule
     // Phase 4: NotificationsModule, ReportingModule, InvestorPortalModule

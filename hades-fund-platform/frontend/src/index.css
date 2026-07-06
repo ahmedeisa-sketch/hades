@@ -45,4 +45,11 @@
   .seal-active::before {
     @apply bg-forest;
   }
+
+  /* Shared form input styling — matches the border/focus treatment already
+     used ad hoc in Login.tsx and InvestorsList.tsx, centralized here so new
+     forms (InvestorForm, etc.) don't redefine it inline. */
+  .input {
+    @apply w-full border border-ink/15 bg-white px-3 py-2 text-sm focus:outline-none focus:border-gold;
+  }
 }
