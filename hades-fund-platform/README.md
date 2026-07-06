@@ -46,6 +46,51 @@ see [Roadmap](#roadmap) below for what's next.
 - **Security baseline** — Helmet, CORS allowlist, global rate limiting (120 req/min/IP), DTO
   whitelisting (unknown fields rejected), soft deletes everywhere (no hard deletes).
 
+## Enhancements since the initial Phase 1 drop
+
+A follow-up security and completeness review found several gaps between what Phase 1 claimed
+and what it actually did. These have been fixed:
+
+**Security / robustness**
+- `JwtStrategy` now re-validates the user against the database on every request (previously a
+  deactivated or soft-deleted user's existing access token kept working until it naturally
+  expired — up to `JWT_ACCESS_EXPIRES_IN`).
+- CORS no longer falls back to a wildcard origin combined with `credentials: true` (invalid in
+  browsers, and insecure even where it "worked"). It now fails closed — cross-origin requests are
+  rejected unless `CORS_ORIGIN` is explicitly set.
+- `/auth/login` and `/auth/refresh` now have their own tighter rate limits (5/min and 10/min per
+  IP) instead of sharing the generic 120/min app-wide budget, which was far too permissive for a
+  credential-stuffing target.
+- `GET /investors` pagination is now validated and clamped via `QueryInvestorsDto`
+  (`page`/`pageSize` are proper integers, `pageSize` is capped at 100) — previously a bad query
+  string produced `NaN` and an unhandled 500 from Prisma.
+- `PATCH /investors/:id/stage` and `POST /auth/refresh` now use validated DTOs instead of untyped
+  request bodies.
+
+**New capability**
+- `GET /investors/relationship-managers` — a minimal id/fullName picklist so Operations and RM
+  roles (not just Super Admin) can actually assign a relationship manager when creating/editing an
+  investor.
+- `GET /health` — an unauthenticated liveness/readiness probe that checks database connectivity,
+  wired into `docker-compose.yml`'s backend healthcheck so the frontend container now waits for a
+  genuinely healthy backend instead of just "container started."
+
+**Frontend**
+- The axios client now does a silent token refresh on a 401 and replays the original request,
+  instead of hard-logging-out on every 401 — which previously also fired on a wrong-password
+  login attempt itself, yanking the user to a page reload instead of showing the error message.
+- **Add investor** — the sidebar/list "+ Add investor" button previously linked to a route that
+  didn't exist. `/investors/new` is now a real form (general info, banking, RM assignment).
+- **Edit investor** — the investor detail page was read-only; it now has an Edit mode using the
+  same form.
+- **Onboarding workflow controls** — the detail page now shows the current stage and a button to
+  advance to the single legal next stage (mirroring the server-enforced order), plus the
+  `ACTIVE → INACTIVE/REDEEMED` terminal transitions.
+- **Compliance controls** — KYC / AML / Source-of-funds status and risk rating can now be updated
+  directly from the detail page (previously view-only, even though the backend endpoint existed).
+- **Documents / Subscriptions / Workflow history** — the detail page's `findOne` call already
+  returned this data from the backend; it's now actually rendered instead of silently dropped.
+
 ## Gap analysis — assumptions made, and why
 
 The original PRD is a strong scope document but leaves several implementation-critical decisions
