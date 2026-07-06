@@ -13,6 +13,8 @@ import {
 } from '../../api/investors';
 import { StatusBadge } from '../../components/StatusBadge';
 import { InvestorForm, InvestorFormValues } from '../../components/investors/InvestorForm';
+import { DocumentsPanel } from '../../components/investors/DocumentsPanel';
+import { SubscriptionsPanel } from '../../components/investors/SubscriptionsPanel';
 
 const REVIEW_STATUSES: ReviewStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'ESCALATED'];
 const RISK_RATINGS: RiskRating[] = ['LOW', 'MEDIUM', 'HIGH'];
@@ -222,46 +224,8 @@ export function InvestorDetail() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <section className="bg-white/60 border border-ink/5 rounded-sm p-5">
-          <h2 className="text-sm uppercase tracking-widest text-slate mb-4">Documents</h2>
-          {investor.documents && investor.documents.length > 0 ? (
-            <ul className="space-y-2 text-sm">
-              {investor.documents.map((doc) => (
-                <li key={doc.id} className="flex justify-between border-b border-ink/5 pb-2">
-                  <span>
-                    {doc.fileName}
-                    <span className="text-xs text-slate-light ml-2">
-                      {doc.type.replace(/_/g, ' ')} · v{doc.version}
-                    </span>
-                  </span>
-                  <span className="text-xs text-slate-light">
-                    {new Date(doc.uploadedAt).toLocaleDateString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyNote text="No documents uploaded yet." />
-          )}
-        </section>
-
-        <section className="bg-white/60 border border-ink/5 rounded-sm p-5">
-          <h2 className="text-sm uppercase tracking-widest text-slate mb-4">Subscriptions</h2>
-          {investor.subscriptions && investor.subscriptions.length > 0 ? (
-            <ul className="space-y-2 text-sm">
-              {investor.subscriptions.map((sub) => (
-                <li key={sub.id} className="flex justify-between border-b border-ink/5 pb-2">
-                  <span>{Number(sub.subscriptionAmount).toLocaleString()}</span>
-                  <span className="text-xs text-slate-light">
-                    {Number(sub.fundUnits).toLocaleString()} units
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyNote text="No subscriptions yet." />
-          )}
-        </section>
+        <DocumentsPanel investorId={investor.id} />
+        <SubscriptionsPanel investorId={investor.id} />
       </div>
 
       <section className="bg-white/60 border border-ink/5 rounded-sm p-5">

@@ -4,11 +4,10 @@ A web-based fund management platform replacing Excel-based operations: investors
 fund units, KYC/compliance, distributions, redemptions, documents, reporting, and dashboard
 analytics.
 
-This repository contains **Phase 1: Foundation** — a working, buildable skeleton with real
-authentication, RBAC, audit logging, the full database schema, and two fully implemented
-modules (Investor Registry, Dashboard). It is meant to be handed to a development team (or
-built on directly) as a correct, opinionated starting point rather than a finished product —
-see [Roadmap](#roadmap) below for what's next.
+This repository contains **Phase 1 (Foundation)** and **Phase 2 (Compliance & Documents)** — a
+working, buildable application with real authentication, RBAC, audit logging, the full database
+schema, and implemented modules for Investor Registry, Dashboard, Documents, Subscriptions/NAV,
+and a Compliance Center. See [Roadmap](#roadmap) below for what's next.
 
 ## Tech stack
 
@@ -45,6 +44,26 @@ see [Roadmap](#roadmap) below for what's next.
 - **Swagger/OpenAPI docs** — auto-generated at `/api/docs` from the actual DTOs and controllers.
 - **Security baseline** — Helmet, CORS allowlist, global rate limiting (120 req/min/IP), DTO
   whitelisting (unknown fields rejected), soft deletes everywhere (no hard deletes).
+
+## What's implemented (Phase 2 — Compliance & Documents)
+
+- **Documents module (Module 4)** — upload with **automatic versioning** (re-uploading the same
+  document type for an investor produces v2, v3, … rather than overwriting, preserving an
+  auditable history), optional expiry dates, list/download/soft-delete. Files are stored behind
+  a **pluggable storage abstraction** (`StorageService`): a local-filesystem provider ships for
+  development, and an S3 provider is selected via `STORAGE_PROVIDER=s3` — the Documents module
+  depends only on the interface, so swapping providers requires no changes to it. Uploads are
+  capped at 15 MB and RBAC-gated per endpoint.
+- **Funds & NAV (Module 6 foundation)** — manage funds and enter **NAV snapshots** (unique per
+  fund + date). NAV entry is restricted to Finance / Portfolio Manager / Super Admin.
+- **Subscriptions module (Module 6)** — creating a subscription **calculates fund units
+  automatically** from the fund's latest NAV snapshot:
+  `fundUnits = allocationAmount / navPerUnitAtEntry`, computed with `Prisma.Decimal` (no
+  floating-point drift). It refuses to price a subscription when the fund has no NAV yet.
+- **Compliance Center (Module 5)** — a dashboard and endpoints surfacing the compliance review
+  queue (investors with pending/escalated KYC, AML, or source-of-funds), investors **missing
+  required documents** (identity + KYC + AML + source-of-funds), and **document expiry alerts**
+  (expired, and expiring within 30 days).
 
 ## Enhancements since the initial Phase 1 drop
 
@@ -110,12 +129,14 @@ assumption for each so a real developer can override deliberately instead of acc
 
 ## Roadmap
 
-**Phase 1 — Foundation (this repo).** Auth, RBAC, audit log, Investors, Dashboard.
+**Phase 1 — Foundation (done).** Auth, RBAC, audit log, Investors, Dashboard.
 
-**Phase 2 — Compliance & documents.**
-Document upload/versioning/expiry (Module 4) with real S3/Azure Blob storage, Compliance Center
-(Module 5) with alerting for expired/missing documents, Subscriptions module (Module 6) with
-automatic fund-unit calculation against `NavSnapshot`.
+**Phase 2 — Compliance & documents (done).**
+Document upload/versioning/expiry (Module 4) behind a pluggable storage abstraction (local disk
+for dev, S3-ready), Compliance Center (Module 5) with alerting for expired/missing documents,
+Subscriptions module (Module 6) with automatic fund-unit calculation against `NavSnapshot`.
+> Note: the storage abstraction ships with a working local-disk provider; the S3 provider is a
+> documented stub (`src/common/storage/s3-storage.service.ts`) to be completed with the AWS SDK.
 
 **Phase 3 — Money movement.**
 Distributions (Module 7) including the approval workflow and a real waterfall/pro-rata
@@ -198,14 +219,19 @@ hades-fund-platform/
 │       ├── users/                # internal system users (Super Admin only)
 │       ├── investors/            # investor registry + onboarding workflow
 │       ├── dashboard/            # KPI + chart aggregation endpoints
-│       ├── common/                # RBAC guard/decorator, audit interceptor
+│       ├── documents/            # Phase 2 — document upload/versioning/expiry
+│       ├── funds/                # Phase 2 — funds + NAV snapshots
+│       ├── subscriptions/        # Phase 2 — subscriptions + auto fund-unit calc
+│       ├── compliance/           # Phase 2 — compliance review queue + doc alerts
+│       ├── health/               # liveness/readiness probe
+│       ├── common/                # RBAC guard/decorator, audit interceptor, storage abstraction
 │       └── prisma/                # PrismaService (DB client)
 ├── frontend/
 │   └── src/
 │       ├── api/                   # typed API client functions
 │       ├── context/AuthContext.tsx
-│       ├── components/            # Sidebar, AppShell, KpiCard, StatusBadge
-│       └── pages/                 # Login, Dashboard, Investors
+│       ├── components/            # Sidebar, AppShell, KpiCard, StatusBadge, investor panels
+│       └── pages/                 # Login, Dashboard, Investors, Compliance
 └── docker-compose.yml
 ```
 

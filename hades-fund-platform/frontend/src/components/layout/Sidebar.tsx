@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard' },
   { to: '/investors', label: 'Investors' },
-  { to: '/compliance', label: 'Compliance', disabled: true },
+  { to: '/compliance', label: 'Compliance' },
   { to: '/distributions', label: 'Distributions', disabled: true },
   { to: '/redemptions', label: 'Redemptions', disabled: true },
   { to: '/reports', label: 'Reports', disabled: true },

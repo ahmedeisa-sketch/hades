@@ -5,11 +5,16 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './common/storage/storage.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { InvestorsModule } from './investors/investors.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
+import { DocumentsModule } from './documents/documents.module';
+import { FundsModule } from './funds/funds.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { ComplianceModule } from './compliance/compliance.module';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
 @Module({
@@ -17,12 +22,17 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]), // 120 req/min per IP by default
     PrismaModule,
+    StorageModule,
     AuthModule,
     UsersModule,
     InvestorsModule,
     DashboardModule,
     HealthModule,
-    // Phase 2: DocumentsModule, ComplianceModule, SubscriptionsModule
+    // Phase 2: Compliance & documents
+    DocumentsModule,
+    FundsModule,
+    SubscriptionsModule,
+    ComplianceModule,
     // Phase 3: DistributionsModule, RedemptionsModule
     // Phase 4: NotificationsModule, ReportingModule, InvestorPortalModule
   ],

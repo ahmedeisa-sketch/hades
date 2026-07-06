@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { InvestorsList } from './pages/investors/InvestorsList';
 import { InvestorDetail } from './pages/investors/InvestorDetail';
 import { InvestorNew } from './pages/investors/InvestorNew';
+import { ComplianceCenter } from './pages/compliance/ComplianceCenter';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -27,6 +28,7 @@ export default function App() {
                 <Route path="/investors" element={<InvestorsList />} />
                 <Route path="/investors/new" element={<InvestorNew />} />
                 <Route path="/investors/:id" element={<InvestorDetail />} />
+                <Route path="/compliance" element={<ComplianceCenter />} />
               </Route>
             </Route>
           </Routes>
